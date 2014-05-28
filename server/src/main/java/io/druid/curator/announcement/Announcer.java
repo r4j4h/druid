@@ -20,13 +20,11 @@
 package io.druid.curator.announcement;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 import com.metamx.common.IAE;
 import com.metamx.common.ISE;
-import com.metamx.common.Pair;
 import com.metamx.common.lifecycle.LifecycleStart;
 import com.metamx.common.lifecycle.LifecycleStop;
 import com.metamx.common.logger.Logger;
@@ -58,16 +56,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Announcer
 {
   private static final Logger log = new Logger(Announcer.class);
-
   private final CuratorFramework curator;
   private final PathChildrenCacheFactory factory;
-
-  private final List<Pair<String, byte[]>> toAnnounce = Lists.newArrayList();
-  private final List<Pair<String, byte[]>> toUpdate = Lists.newArrayList();
+  private final Map<String, byte[]> toAnnounce = new MapMaker().makeMap();
+  private final Map<String, byte[]> toUpdate = new MapMaker().makeMap();
   private final ConcurrentMap<String, PathChildrenCache> listeners = new MapMaker().makeMap();
   private final ConcurrentMap<String, ConcurrentMap<String, byte[]>> announcements = new MapMaker().makeMap();
   private final List<String> parentsIBuilt = new CopyOnWriteArrayList<String>();
-
   private boolean started = false;
 
   public Announcer(
@@ -89,13 +84,13 @@ public class Announcer
 
       started = true;
 
-      for (Pair<String, byte[]> pair : toAnnounce) {
-        announce(pair.lhs, pair.rhs);
+      for (Map.Entry<String, byte[]> entry : toAnnounce.entrySet()) {
+        announce(entry.getKey(), entry.getValue());
       }
       toAnnounce.clear();
 
-      for (Pair<String, byte[]> pair : toUpdate) {
-        update(pair.lhs, pair.rhs);
+      for (Map.Entry<String, byte[]> entry : toUpdate.entrySet()) {
+        update(entry.getKey(), entry.getValue());
       }
       toUpdate.clear();
     }
@@ -145,7 +140,7 @@ public class Announcer
   {
     synchronized (toAnnounce) {
       if (!started) {
-        toAnnounce.add(Pair.of(path, bytes));
+        toAnnounce.put(path, bytes);
         return;
       }
     }
@@ -274,7 +269,7 @@ public class Announcer
   {
     synchronized (toAnnounce) {
       if (!started) {
-        toUpdate.add(Pair.of(path, bytes));
+        toUpdate.put(path, bytes);
         return;
       }
     }
@@ -366,6 +361,33 @@ public class Announcer
     }
     catch (Exception e) {
       log.info(e, "Problem creating parentPath[%s], someone else created it first?", parentPath);
+    }
+  }
+
+  /**
+   * returns the bytes at the given path.
+   *
+   * @param path The path to fetch the data from
+   */
+  public byte[] getAnnouncedData(final String path)
+  {
+    synchronized (toAnnounce) {
+      if (!started) {
+        byte[] rv = toUpdate.get(path);
+        if (rv == null) {
+          rv = toAnnounce.get(path);
+        }
+        return rv;
+      }
+    }
+
+    try {
+      return curator.getData().decompressed().forPath(path);
+    }
+    catch (Exception e) {
+      log.error("Exception while reading from Path[%s]", path, e);
+      return null;
+
     }
   }
 }

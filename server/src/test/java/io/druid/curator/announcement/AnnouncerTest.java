@@ -71,16 +71,20 @@ public class AnnouncerTest extends CuratorTestBase
 
     Assert.assertNull(curator.checkExists().forPath(testPath1));
     Assert.assertNull(curator.checkExists().forPath(testPath2));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath1));
 
     announcer.start();
 
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath1));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath1));
+
     Assert.assertNull(curator.checkExists().forPath(testPath2));
 
     announcer.announce(testPath2, billy);
 
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath1));
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath2));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath2));
 
     final CountDownLatch latch = new CountDownLatch(1);
     curator.getCuratorListenable().addListener(
@@ -100,15 +104,22 @@ public class AnnouncerTest extends CuratorTestBase
 
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath1));
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath2));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath1));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath2));
 
     announcer.unannounce(testPath1);
     Assert.assertNull(curator.checkExists().forPath(testPath1));
     Assert.assertArrayEquals(billy, curator.getData().decompressed().forPath(testPath2));
+    Assert.assertNull(announcer.getAnnouncedData(testPath1));
+    Assert.assertArrayEquals(billy, announcer.getAnnouncedData(testPath2));
 
     announcer.stop();
 
     Assert.assertNull(curator.checkExists().forPath(testPath1));
     Assert.assertNull(curator.checkExists().forPath(testPath2));
+    Assert.assertNull(announcer.getAnnouncedData(testPath1));
+    Assert.assertNull(announcer.getAnnouncedData(testPath2));
+
   }
 
   @Test
