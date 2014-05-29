@@ -572,10 +572,7 @@ public class RealtimePlumber implements Plumber
     ScheduledExecutors
         .scheduleAtFixedRate(
             scheduledExecutor,
-            new Duration(
-                System.currentTimeMillis(),
-                segmentGranularity.increment(truncatedNow).getMillis() + windowMillis
-            ),
+            new Duration(0),
             new Duration(truncatedNow, segmentGranularity.increment(truncatedNow)),
             new ThreadRenamingCallable<ScheduledExecutors.Signal>(
                 String.format(
