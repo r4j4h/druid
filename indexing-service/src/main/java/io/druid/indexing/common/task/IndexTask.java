@@ -139,7 +139,7 @@ public class IndexTask extends AbstractFixedIntervalTask
               granularitySpec.withQueryGranularity(indexGranularity == null ? QueryGranularity.NONE : indexGranularity)
           ),
           new IndexIOConfig(firehoseFactory),
-          new IndexTuningConfig(targetPartitionSize, rowFlushBoundary)
+          new IndexTuningConfig(targetPartitionSize, rowFlushBoundary, null)
       );
     }
   }
@@ -175,7 +175,7 @@ public class IndexTask extends AbstractFixedIntervalTask
       if (targetPartitionSize > 0) {
         shardSpecs = determinePartitions(bucket, targetPartitionSize);
       } else {
-        shardSpecs = ImmutableList.<ShardSpec>of(new NoneShardSpec());
+        shardSpecs = ingestionSchema.getTuningConfig().getShardSpecs();
       }
       for (final ShardSpec shardSpec : shardSpecs) {
         final DataSegment segment = generateSegment(
@@ -477,7 +477,7 @@ public class IndexTask extends AbstractFixedIntervalTask
 
       this.dataSchema = dataSchema;
       this.ioConfig = ioConfig;
-      this.tuningConfig = tuningConfig == null ? new IndexTuningConfig(0, 0) : tuningConfig;
+      this.tuningConfig = tuningConfig == null ? new IndexTuningConfig(0, 0, null) : tuningConfig;
     }
 
     @Override
@@ -530,15 +530,18 @@ public class IndexTask extends AbstractFixedIntervalTask
 
     private final int targetPartitionSize;
     private final int rowFlushBoundary;
+    private final List<ShardSpec> shardSpecs;
 
     @JsonCreator
     public IndexTuningConfig(
         @JsonProperty("targetPartitionSize") int targetPartitionSize,
-        @JsonProperty("rowFlushBoundary") int rowFlushBoundary
+        @JsonProperty("rowFlushBoundary") int rowFlushBoundary,
+        @JsonProperty("shardSpecs") List<ShardSpec> shardSpecs
     )
     {
       this.targetPartitionSize = targetPartitionSize == 0 ? DEFAULT_TARGET_PARTITION_SIZE : targetPartitionSize;
       this.rowFlushBoundary = rowFlushBoundary == 0 ? DEFAULT_ROW_FLUSH_BOUNDARY : rowFlushBoundary;
+      this.shardSpecs = shardSpecs == null ? ImmutableList.<ShardSpec>of(new NoneShardSpec()): shardSpecs;
     }
 
     @JsonProperty
@@ -551,6 +554,12 @@ public class IndexTask extends AbstractFixedIntervalTask
     public int getRowFlushBoundary()
     {
       return rowFlushBoundary;
+    }
+
+    @JsonProperty
+    public List<ShardSpec> getShardSpecs()
+    {
+      return shardSpecs;
     }
   }
 }
