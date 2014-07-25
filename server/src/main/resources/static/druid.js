@@ -11334,7 +11334,7 @@ app.factory('$druid', function($q, $http, $utils) {
     env: void 0,
     coordinator: void 0,
     proxy: function(path) {
-      return "/pass/coordinator/" + this.env + "/druid/coordinator/v1" + path;
+      return "/druid/coordinator/v1" + path;
     },
     getAndProcess: function() {
       var cb, cbArgs, deferred, url;
